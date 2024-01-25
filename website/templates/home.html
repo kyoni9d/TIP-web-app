@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<div class="container d-flex align-items-center justify-content-center vh-100">
+  <div>
+    <h1 class="text-center">Fake email address generator</h1>
+
+    <!-- Окно для отображения адреса -->
+    <div class="text-center mt-3">
+      <h2>Your email address is</h2>
+      <p id="email">{{ email }}</p>
+    </div>
+
+    <!-- Кнопка "Generate" -->
+    </form>
+    <form id="generate-form" method="POST">
+      <div class="text-center">
+        <button type="button" class="btn btn-primary" id="generate-btn">Generate</button>
+      </div>
+    </form>
+
+    <!-- История сгенерированных email адресов -->
+    <div class="text-center mt-3">
+      <h3 class="text-center">History:</h3>
+      <ul class="list-group" id="email-history">
+        {% for history_item in email_history %}
+        <li class="list-group-item">{{ history_item.email }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <!-- Кнопка "Clear History" -->
+    <div class="text-center mt-3">
+      <button type="button" class="btn btn-danger" id="clear-history-btn">Clear History</button>
+    </div>
+  </div>
+</div>
+<br />
+
+<!-- Сгенерировать новый адрес -->
+<script>
+  document.getElementById("generate-btn").addEventListener("click", function() {
+      console.log("Кнопка 'Generate' нажата"); // Добавьте эту строку
+      // Выполняем GET-запрос к микросервису на Go
+      fetch("/call_microservice")
+      .then(response => response.json())
+      .then(data => {
+          // Обновляем окно с адресом
+          document.getElementById("email").textContent = data.email;
+          // Обновляем историю email адресов
+          var emailHistoryElement = document.getElementById("email-history");
+          var newHistoryItem = document.createElement("li");
+          newHistoryItem.textContent = data.email;
+          newHistoryItem.classList.add("list-group-item");
+          emailHistoryElement.appendChild(newHistoryItem);
+      })
+      .catch(error => console.error("Ошибка:", error));
+  });
+</script>
+
+<!-- Отчистить историю сгенерированных адресов -->
+<script>
+document.getElementById("clear-history-btn").addEventListener("click", function() {
+    console.log("Кнопка 'Clear History' нажата");
+    // Отправляем запрос на сервер для удаления истории email адресов
+    fetch("/clear_history", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Проверяем, удаление было успешным
+        if (data.success) {
+            // Очищаем список истории на клиенте
+            var emailHistoryElement = document.getElementById("email-history");
+            emailHistoryElement.innerHTML = '';
+            // Загружаем новую историю email адресов с сервера и обновляем список
+            fetch("/get_email_history")
+            .then(response => response.json())
+            .then(emailHistory => {
+                emailHistory.forEach(email => {
+                    var newHistoryItem = document.createElement("li");
+                    newHistoryItem.textContent = email;
+                    newHistoryItem.classList.add("list-group-item");
+                    emailHistoryElement.appendChild(newHistoryItem);
+                });
+            })
+            .catch(error => console.error("Ошибка при загрузке истории email адресов:", error));
+        } else {
+            console.error("Ошибка при удалении истории email адресов:", data.error);
+        }
+    })
+    .catch(error => console.error("Ошибка:", error));
+});
+</script>
+{% endblock %}
